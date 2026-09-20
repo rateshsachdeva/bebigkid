@@ -151,7 +151,26 @@ export async function recentLogin(
       403,
     );
 }
-export function check(error: { message: string } | null) {
-  if (error)
-    throw new AppError("The action could not be saved. Please try again.", 400);
+export function check(
+  error: { message: string; code?: string; status?: number } | null,
+) {
+  if (!error) return;
+  if (
+    error.status === 429 ||
+    error.code === "over_email_send_rate_limit" ||
+    /email rate limit/i.test(error.message)
+  )
+    throw new AppError(
+      "Too many sign-in emails were requested. Please wait an hour and try again.",
+      429,
+    );
+  if (
+    error.code === "otp_expired" ||
+    /token has expired|otp expired|invalid.*otp/i.test(error.message)
+  )
+    throw new AppError(
+      "That sign-in code has expired or was already used. Please request a new code.",
+      400,
+    );
+  throw new AppError("The action could not be saved. Please try again.", 400);
 }
