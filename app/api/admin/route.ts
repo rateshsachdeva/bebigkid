@@ -20,7 +20,9 @@ export async function GET() {
           .select("id,title,state,publisher,url,reviewer"),
         db
           .from("jobs")
-          .select("id,kind,state,attempts")
+          .select(
+            "id,kind,state,attempts,target_id,last_error,last_error_at,next_run",
+          )
           .order("created_at", { ascending: false })
           .limit(30),
         db.from("operating_settings").select("*").single(),
@@ -90,6 +92,21 @@ export async function POST(req: Request) {
       );
     } else if (b.action === "evaluate") {
       const id = z.string().uuid().parse(b.id);
+      const { data: existing } = await db
+        .from("evaluation_runs")
+        .select("id,state")
+        .eq("config_id", id)
+        .in("state", ["pending", "running", "completed"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existing)
+        return NextResponse.json({
+          message:
+            existing.state === "completed"
+              ? "This model already has a completed evaluation ready for review."
+              : "An evaluation for this model is already in progress.",
+        });
       const { data: run, error } = await db
         .from("evaluation_runs")
         .insert({ config_id: id })
@@ -236,6 +253,14 @@ export async function POST(req: Request) {
           .error,
       );
     } else if (b.action === "retry-job") {
+      const id = z.string().uuid().parse(b.id);
+      const { data: retry } = await db
+        .from("jobs")
+        .select("kind,target_id")
+        .eq("id", id)
+        .eq("state", "failed")
+        .maybeSingle();
+      if (!retry) throw new AppError("This job is not available for retry.");
       check(
         (
           await db
@@ -244,11 +269,22 @@ export async function POST(req: Request) {
               state: "queued",
               attempts: 0,
               next_run: new Date().toISOString(),
+              last_error: null,
+              last_error_at: null,
             })
-            .eq("id", z.string().uuid().parse(b.id))
+            .eq("id", id)
             .eq("state", "failed")
         ).error,
       );
+      if (retry.kind === "evaluation")
+        check(
+          (
+            await db
+              .from("evaluation_runs")
+              .update({ state: "pending" })
+              .eq("id", retry.target_id)
+          ).error,
+        );
     } else throw new AppError("Unknown action.");
     check(
       (

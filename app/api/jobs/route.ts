@@ -11,6 +11,26 @@ import { generateText, modelOptions } from "@/lib/gateway";
 import { evaluationCases } from "@/lib/evaluations";
 export const runtime = "nodejs";
 export const maxDuration = 60;
+function safeOperationalError(value: unknown) {
+  const candidate = value as {
+    name?: string;
+    message?: string;
+    statusCode?: number;
+  };
+  const parts = [
+    candidate?.statusCode ? `HTTP ${candidate.statusCode}` : "",
+    candidate?.name ?? "",
+    candidate?.message ?? "The background operation failed.",
+  ].filter(Boolean);
+  return parts
+    .join(" · ")
+    .replace(/(bearer\s+)[^\s]+/gi, "$1[redacted]")
+    .replace(
+      /(api[_ -]?key|token|secret)(["'=:\s]+)[^\s,;}]+/gi,
+      "$1$2[redacted]",
+    )
+    .slice(0, 1000);
+}
 export async function GET(req: Request) {
   const expected = process.env.CRON_SECRET,
     provided = req.headers.get("authorization") ?? "";
@@ -242,7 +262,7 @@ export async function GET(req: Request) {
                     Number(config.input_rate),
                     Number(config.output_rate),
                   )
-                : reservation,
+                : 0,
               in_tokens: usage?.inputTokens ?? 0,
               out_tokens: usage?.outputTokens ?? 0,
               cfg: config.id,
@@ -279,6 +299,8 @@ export async function GET(req: Request) {
             .update({
               state: requeue ? "queued" : "completed",
               lease_until: null,
+              last_error: null,
+              last_error_at: null,
               ...(requeue
                 ? { attempts: 0, next_run: new Date().toISOString() }
                 : {}),
@@ -286,17 +308,25 @@ export async function GET(req: Request) {
             .eq("id", job.id)
         ).error,
       );
-    } catch {
+    } catch (error) {
+      const finalFailure = job.attempts >= 5;
       await db
         .from("jobs")
         .update({
-          state: job.attempts >= 5 ? "failed" : "queued",
+          state: finalFailure ? "failed" : "queued",
           lease_until: null,
+          last_error: safeOperationalError(error),
+          last_error_at: new Date().toISOString(),
           next_run: new Date(
             Date.now() + Math.min(3600, 30 * 2 ** job.attempts) * 1000,
           ).toISOString(),
         })
         .eq("id", job.id);
+      if (finalFailure && job.kind === "evaluation")
+        await db
+          .from("evaluation_runs")
+          .update({ state: "failed" })
+          .eq("id", job.target_id);
       return NextResponse.json({ processed: 1, retry: true });
     }
     return NextResponse.json({ processed: 1 });

@@ -463,41 +463,71 @@ export default function Admin({ demo }: { demo: boolean }) {
               </div>
             </div>
           ))}
-          {state.evaluations?.map((run: any) => (
-            <details className="paper" key={run.id}>
-              <summary>
-                Evaluation · {run.state} · {run.results?.length ?? 0}/40 answers
-              </summary>
-              <p>Configuration: {run.config_id}</p>
-              <p>
-                A qualified reviewer must read all responses against the safety
-                and usefulness criteria in docs/REVIEW_CHECKLIST.md. Completion
-                alone is not a pass.
-              </p>
-              {run.results?.map((r: any) => (
-                <article className="note-card" key={r.id}>
-                  <h3>{r.id}</h3>
-                  <p>{r.prompt}</p>
-                  <p style={{ whiteSpace: "pre-wrap" }}>{r.answer}</p>
-                </article>
-              ))}
-              <label>
-                Reviewer name
-                <Input
-                  value={reviewer}
-                  onChange={(e) => setReviewer(e.target.value)}
-                />
-              </label>
-              <Button
-                disabled={busy || run.state !== "completed" || !reviewer.trim()}
-                onClick={() =>
-                  action({ action: "approve-evaluation", id: run.id, reviewer })
-                }
-              >
-                I reviewed all 40 answers and approve
-              </Button>
-            </details>
-          ))}
+          {state.evaluations?.map((run: any) => {
+            const evaluationJob = state.jobs.find(
+              (job: any) => job.target_id === run.id,
+            );
+            return (
+              <details className="paper" key={run.id}>
+                <summary>
+                  Evaluation · {run.state} · {run.results?.length ?? 0}/40
+                  answers
+                </summary>
+                <p>Configuration: {run.config_id}</p>
+                <p>
+                  A qualified reviewer must read all responses against the
+                  safety and usefulness criteria in docs/REVIEW_CHECKLIST.md.
+                  Completion alone is not a pass.
+                </p>
+                {evaluationJob?.last_error && (
+                  <div className="feedback error" role="alert">
+                    Latest evaluation attempt failed: {evaluationJob.last_error}
+                    {evaluationJob.state === "queued" &&
+                      " The system will retry automatically."}
+                  </div>
+                )}
+                {run.results?.map((r: any) => (
+                  <article className="note-card" key={r.id}>
+                    <h3>{r.id}</h3>
+                    <p>{r.prompt}</p>
+                    <p style={{ whiteSpace: "pre-wrap" }}>{r.answer}</p>
+                  </article>
+                ))}
+                <label>
+                  Reviewer name
+                  <Input
+                    value={reviewer}
+                    onChange={(e) => setReviewer(e.target.value)}
+                  />
+                </label>
+                <Button
+                  disabled={
+                    busy || run.state !== "completed" || !reviewer.trim()
+                  }
+                  onClick={() =>
+                    action({
+                      action: "approve-evaluation",
+                      id: run.id,
+                      reviewer,
+                    })
+                  }
+                >
+                  I reviewed all 40 answers and approve
+                </Button>
+                {evaluationJob?.state === "failed" && (
+                  <Button
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() =>
+                      action({ action: "retry-job", id: evaluationJob.id })
+                    }
+                  >
+                    Retry evaluation
+                  </Button>
+                )}
+              </details>
+            );
+          })}
           <p className="small-print">
             A passed evaluation and human review are required to activate.
             Select a previously tested version to roll back.
@@ -640,6 +670,7 @@ export default function Admin({ demo }: { demo: boolean }) {
                     <small>
                       {j.state} · attempt {j.attempts}
                     </small>
+                    {j.last_error && <small>{j.last_error}</small>}
                   </span>
                   {j.state === "failed" && (
                     <Button
