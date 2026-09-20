@@ -187,6 +187,10 @@ export default function Workspace({
     if (demo || publicPage) return;
     refresh()
       .then((d) => {
+        if (initialPage.startsWith("admin") && !d.isAdmin) {
+          router.replace(d.consent ? "/chat" : "/welcome");
+          return;
+        }
         if (!d.consent && initialPage !== "welcome") router.replace("/welcome");
       })
       .catch((e) => {
@@ -562,7 +566,7 @@ export default function Workspace({
           <History size={19} />
           Conversations
         </button>
-        {(data.isAdmin || demo) && (
+        {data.isAdmin && (
           <button className="nav-item" onClick={() => go("admin")}>
             <SlidersHorizontal size={19} />
             Owner dashboard
@@ -843,8 +847,8 @@ export default function Workspace({
             </div>
             {alert}
           </div>
-        ) : rootPage === "admin" ? (
-          <Admin demo={demo} />
+        ) : rootPage === "admin" && data.isAdmin ? (
+          <Admin demo={false} />
         ) : !ready ? (
           <div className="content-page" role="status">
             Opening your space…

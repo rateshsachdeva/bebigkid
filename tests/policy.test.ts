@@ -5,6 +5,7 @@ import {
   cleanCitations,
   citationIds,
   chunkText,
+  responsePolicy,
   safeUrl,
 } from "../lib/ai-policy";
 import { turnSchema, childSchema, configSchema } from "../lib/validation";
@@ -94,7 +95,7 @@ test("parents cannot submit owner IDs or model choices in a chat turn", () => {
 });
 test("optional child profile does not demand identifying information", () =>
   assert.ok(childSchema.safeParse(emptyChild).success));
-test("model candidates require explicit privacy and behaviour review", () => {
+test("model candidates require privacy review and a bounded reply style", () => {
   const config = {
     model_id: "vendor/model",
     providers: ["vendor"],
@@ -102,11 +103,34 @@ test("model candidates require explicit privacy and behaviour review", () => {
     output_rate: 1,
     output_tokens: 1000,
     privacy_reviewed: true,
-    behaviour_reviewed: true,
+    behaviour_reviewed: false,
+    response_style: {
+      length: "balanced",
+      max_steps: 3,
+      clarifying_question: true,
+      match_language: true,
+    },
   };
   assert.ok(configSchema.safeParse(config).success);
   assert.ok(
     !configSchema.safeParse({ ...config, privacy_reviewed: false }).success,
   );
   assert.ok(!configSchema.safeParse({ ...config, providers: [] }).success);
+  assert.ok(
+    !configSchema.safeParse({
+      ...config,
+      response_style: { ...config.response_style, max_steps: 8 },
+    }).success,
+  );
+});
+test("versioned reply style cannot replace the locked safety policy", () => {
+  const policy = responsePolicy({
+    length: "brief",
+    max_steps: 2,
+    clarifying_question: false,
+    match_language: false,
+  });
+  assert.match(policy, /60–140 words/);
+  assert.match(policy, /no more than 2/);
+  assert.doesNotMatch(policy, /punishment|restraint|diagnose/);
 });

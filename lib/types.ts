@@ -42,6 +42,7 @@ export type Snapshot = {
   email?: string;
   consent: boolean;
   isAdmin?: boolean;
+  adminRole?: "owner" | "content_editor";
 };
 export const emptyChild: Child = {
   nickname: "",

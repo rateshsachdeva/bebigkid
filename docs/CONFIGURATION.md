@@ -27,7 +27,7 @@ After adding variables, redeploy the latest commit. Values added after a build d
 
 Apply production values only to production initially. For preview deployments, use a separate staging database and matching exact `APP_URL`, or leave private APIs unconfigured and review `/preview`. Do not share production credentials across arbitrary pull-request previews.
 
-The cron in vercel.json runs once a minute and requires the paid Vercel plan selected by the owner. Confirm the actual plan and billing in the project's dashboard. The AI operating settings remain paused with a zero-dollar budget until the owner changes them; there is no chargeable model configured by this setup.
+The cron in vercel.json runs once a minute and requires the paid Vercel plan selected by the owner. Confirm the actual plan and billing in the project's dashboard. The app currently has a $5 internal monthly AI limit and is unpaused, but no approved model is active. “Unpaused” alone does not make chat available: create a candidate, complete the 40-answer evaluation, record the human review and activate that exact version.
 
 ## Sign-in and owner access
 

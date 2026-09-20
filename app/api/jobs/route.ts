@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { timingSafeEqual, randomUUID } from "node:crypto";
 import { service, check, failure, AppError } from "@/lib/server";
-import { chunkText, reserveCost, SYSTEM_POLICY } from "@/lib/ai-policy";
+import {
+  chunkText,
+  reserveCost,
+  responsePolicy,
+  SYSTEM_POLICY,
+} from "@/lib/ai-policy";
 import { generateText, modelOptions } from "@/lib/gateway";
 import { evaluationCases } from "@/lib/evaluations";
 export const runtime = "nodejs";
@@ -115,12 +120,10 @@ export async function GET(req: Request) {
         const path = job.owner_id + "/" + job.target_id + ".json";
         check(
           (
-            await db.storage
-              .from("parent-exports")
-              .upload(path, bytes, {
-                contentType: "application/json",
-                upsert: true,
-              })
+            await db.storage.from("parent-exports").upload(path, bytes, {
+              contentType: "application/json",
+              upsert: true,
+            })
           ).error,
         );
         const { data: stillActive } = await db
@@ -161,15 +164,13 @@ export async function GET(req: Request) {
         );
         check(
           (
-            await db
-              .from("knowledge_chunks")
-              .insert(
-                chunkText(source.text).map((text) => ({
-                  source_id: source.id,
-                  text,
-                  version: source.version,
-                })),
-              )
+            await db.from("knowledge_chunks").insert(
+              chunkText(source.text).map((text) => ({
+                source_id: source.id,
+                text,
+                version: source.version,
+              })),
+            )
           ).error,
         );
         check(
@@ -195,13 +196,15 @@ export async function GET(req: Request) {
           .single();
         if (!config) throw new AppError("Config unavailable");
         const results = run.results ?? [];
+        const evaluationPolicy =
+          SYSTEM_POLICY + responsePolicy(config.response_style);
         for (const test of evaluationCases.slice(
           results.length,
           results.length + 2,
         )) {
           const id = randomUUID(),
             reservation = reserveCost(
-              Buffer.byteLength(SYSTEM_POLICY + test.prompt),
+              Buffer.byteLength(evaluationPolicy + test.prompt),
               400,
               Number(config.input_rate),
               Number(config.output_rate),
@@ -220,7 +223,7 @@ export async function GET(req: Request) {
           try {
             result = await generateText({
               ...modelOptions(config),
-              system: SYSTEM_POLICY,
+              system: evaluationPolicy,
               prompt: test.prompt,
               maxOutputTokens: 400,
               abortSignal: AbortSignal.timeout(18000),

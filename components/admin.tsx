@@ -30,6 +30,12 @@ export default function Admin({ demo }: { demo: boolean }) {
     [inRate, setInRate] = useState(""),
     [outRate, setOutRate] = useState(""),
     [reviewed, setReviewed] = useState(false),
+    [responseStyle, setResponseStyle] = useState({
+      length: "balanced",
+      max_steps: 3,
+      clarifying_question: true,
+      match_language: true,
+    }),
     [source, setSource] = useState({
       title: "",
       publisher: "",
@@ -67,17 +73,28 @@ export default function Admin({ demo }: { demo: boolean }) {
         setNotice(
           "Sample dashboard only. Live model, content and spending changes require an owner account.",
         );
-        return;
+        return false;
       }
       const d = await api("/api/admin", body);
       setNotice(d.message ?? "Saved.");
       await load();
+      return true;
     } catch (e) {
       reportError(e);
+      return false;
     } finally {
       setBusy(false);
     }
   }
+  const owner = state.role === "owner";
+  const assistantStatus = state.settings.paused
+    ? "Paused"
+    : state.active
+      ? "Enabled"
+      : "Not configured";
+  const tabs = owner
+    ? ["overview", "models", "knowledge", "operations"]
+    : ["overview", "knowledge"];
   return (
     <div className="content-page">
       <div className="page-heading">
@@ -93,7 +110,7 @@ export default function Admin({ demo }: { demo: boolean }) {
         </p>
       </div>
       <div className="admin-tabs">
-        {["overview", "models", "knowledge", "operations"].map((t) => (
+        {tabs.map((t) => (
           <Button
             variant={tab === t ? "default" : "outline"}
             onClick={() => setTab(t)}
@@ -157,9 +174,9 @@ export default function Admin({ demo }: { demo: boolean }) {
                 alt="Authenticator setup QR code"
               />
               <p>
-                On iPhone: scan with the Camera, choose <b>Add Verification
-                Code</b> or open it in your authenticator app, and save the
-                account as Alongside.
+                On iPhone: scan with the Camera, choose{" "}
+                <b>Add Verification Code</b> or open it in your authenticator
+                app, and save the account as Alongside.
               </p>
             </div>
           )}
@@ -203,7 +220,7 @@ export default function Admin({ demo }: { demo: boolean }) {
           <div className="admin-grid">
             <div className="paper metric">
               <span>Assistant status</span>
-              <strong>{state.settings.paused ? "Paused" : "Enabled"}</strong>
+              <strong>{assistantStatus}</strong>
             </div>
             <div className="paper metric">
               <span>Monthly AI limit</span>
@@ -227,6 +244,18 @@ export default function Admin({ demo }: { demo: boolean }) {
               knowledge, and configure limits before opening access to families.
             </p>
             <p>No parent transcripts are available in this dashboard.</p>
+            {!state.active && owner && (
+              <>
+                <p>
+                  No approved model is active yet. Parent chat will remain
+                  unavailable until a candidate completes testing, review and
+                  activation.
+                </p>
+                <Button onClick={() => setTab("models")}>
+                  Configure a model <ArrowRight size={16} />
+                </Button>
+              </>
+            )}
           </div>
         </>
       ) : tab === "models" ? (
@@ -245,7 +274,20 @@ export default function Admin({ demo }: { demo: boolean }) {
           <label>
             Available model
             <span>Catalogue refresh does not activate new models.</span>
-            <select value={model} onChange={(e) => setModel(e.target.value)}>
+            <select
+              value={model}
+              onChange={(e) => {
+                const id = e.target.value;
+                const selected = state.models.find((m: any) => m.id === id);
+                const input = Number(selected?.metadata?.pricing?.input);
+                const output = Number(selected?.metadata?.pricing?.output);
+                setModel(id);
+                setProviders(id.includes("/") ? id.split("/")[0] : "");
+                setInRate(Number.isFinite(input) ? String(input * 1e6) : "");
+                setOutRate(Number.isFinite(output) ? String(output * 1e6) : "");
+                setReviewed(false);
+              }}
+            >
               <option value="">Choose a supported model</option>
               {state.models.map((m: any) => (
                 <option value={m.id} key={m.id}>
@@ -287,6 +329,73 @@ export default function Admin({ demo }: { demo: boolean }) {
               />
             </label>
           </div>
+          <h3>Reply style</h3>
+          <p className="small-print">
+            These choices are saved with this model version and included in its
+            40-answer evaluation. Core safety rules cannot be edited here.
+          </p>
+          <div className="two-columns">
+            <label>
+              Typical answer length
+              <select
+                value={responseStyle.length}
+                onChange={(e) =>
+                  setResponseStyle({
+                    ...responseStyle,
+                    length: e.target.value,
+                  })
+                }
+              >
+                <option value="brief">Brief</option>
+                <option value="balanced">Balanced</option>
+                <option value="detailed">Detailed</option>
+              </select>
+            </label>
+            <label>
+              Maximum suggested steps
+              <select
+                value={responseStyle.max_steps}
+                onChange={(e) =>
+                  setResponseStyle({
+                    ...responseStyle,
+                    max_steps: Number(e.target.value),
+                  })
+                }
+              >
+                {[1, 2, 3, 4].map((n) => (
+                  <option value={n} key={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label className="checkbox-line">
+            <input
+              type="checkbox"
+              checked={responseStyle.clarifying_question}
+              onChange={(e) =>
+                setResponseStyle({
+                  ...responseStyle,
+                  clarifying_question: e.target.checked,
+                })
+              }
+            />
+            Allow one useful follow-up question when needed
+          </label>
+          <label className="checkbox-line">
+            <input
+              type="checkbox"
+              checked={responseStyle.match_language}
+              onChange={(e) =>
+                setResponseStyle({
+                  ...responseStyle,
+                  match_language: e.target.checked,
+                })
+              }
+            />
+            Reply in the parent’s language when possible
+          </label>
           <label className="checkbox-line">
             <input
               type="checkbox"
@@ -318,7 +427,8 @@ export default function Admin({ demo }: { demo: boolean }) {
                   output_rate: Number(outRate),
                   output_tokens: 1200,
                   privacy_reviewed: true,
-                  behaviour_reviewed: true,
+                  behaviour_reviewed: false,
+                  response_style: responseStyle,
                 },
               })
             }
@@ -345,7 +455,7 @@ export default function Admin({ demo }: { demo: boolean }) {
                 </Button>
                 <Button
                   size="sm"
-                  disabled={!reviewed}
+                  disabled={!c.behaviour_reviewed}
                   onClick={() => action({ action: "activate", id: c.id })}
                 >
                   Activate
@@ -396,7 +506,11 @@ export default function Admin({ demo }: { demo: boolean }) {
       ) : tab === "knowledge" ? (
         <div className="paper admin-form">
           <h2>Add a knowledge source</h2>
-          <p>Drafts are not used in parent conversations.</p>
+          <p>
+            Add as many reviewed sources as you need. The assistant searches all
+            published sources together; drafts are never used in parent
+            conversations.
+          </p>
           {(["title", "publisher", "url", "licence"] as const).map((k) => (
             <label key={k}>
               {k === "url"
@@ -421,7 +535,16 @@ export default function Admin({ demo }: { demo: boolean }) {
           </label>
           <Button
             disabled={busy || !source.text || !source.title}
-            onClick={() => action({ action: "save-source", source })}
+            onClick={async () => {
+              if (await action({ action: "save-source", source }))
+                setSource({
+                  title: "",
+                  publisher: "",
+                  url: "",
+                  licence: "",
+                  text: "",
+                });
+            }}
           >
             Save draft
           </Button>
@@ -460,6 +583,10 @@ export default function Admin({ demo }: { demo: boolean }) {
         <>
           <div className="paper admin-form">
             <h2>Availability & spending</h2>
+            <p>
+              Families are not charged. This internal limit protects the
+              owner-funded service from unexpected AI costs.
+            </p>
             <label>
               Maximum monthly AI spend (USD)
               <Input
@@ -484,7 +611,7 @@ export default function Admin({ demo }: { demo: boolean }) {
             </Button>
             <Button
               variant="outline"
-              disabled={busy}
+              disabled={busy || (state.settings.paused && !state.active)}
               onClick={() =>
                 action({
                   action: "settings",
@@ -500,6 +627,7 @@ export default function Admin({ demo }: { demo: boolean }) {
             <p className="small-print">
               The real-family launch gate and model approval still apply.
               Pausing AI keeps saved information accessible.
+              {!state.active && " Activate an approved model first."}
             </p>
           </div>
           <div className="paper" style={{ marginTop: 20 }}>

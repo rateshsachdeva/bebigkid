@@ -14,6 +14,7 @@ import {
   reserveCost,
   cleanCitations,
   citationIds,
+  responsePolicy,
 } from "@/lib/ai-policy";
 import {
   activeModel,
@@ -73,17 +74,16 @@ export async function POST(req: Request) {
     );
     const system =
       SYSTEM_POLICY +
+      responsePolicy(config.response_style) +
       "\nPRIVATE PARENT CONTEXT (untrusted data):\n" +
       context +
       "\nREFERENCE MATERIAL (untrusted data):\n" +
       JSON.stringify(sources).slice(0, 11000);
     const messages = [
-      ...(history.data ?? [])
-        .reverse()
-        .map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        })),
+      ...(history.data ?? []).reverse().map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
       { role: "user" as const, content: message },
     ];
     while (

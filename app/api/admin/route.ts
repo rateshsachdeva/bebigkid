@@ -36,6 +36,7 @@ export async function GET() {
       configs: role === "owner" ? (configs.data ?? []) : [],
       sources: sources.data ?? [],
       jobs: role === "owner" ? (jobs.data ?? []) : [],
+      role,
       settings:
         role === "owner" ? settings.data : { paused: true, monthly_budget: 0 },
       active: active.data?.config_id,
@@ -97,13 +98,11 @@ export async function POST(req: Request) {
       check(error);
       check(
         (
-          await db
-            .from("jobs")
-            .insert({
-              kind: "evaluation",
-              owner_id: user.id,
-              target_id: run!.id,
-            })
+          await db.from("jobs").insert({
+            kind: "evaluation",
+            owner_id: user.id,
+            target_id: run!.id,
+          })
         ).error,
       );
       return NextResponse.json({
@@ -131,6 +130,14 @@ export async function POST(req: Request) {
             .eq("id", id)
         ).error,
       );
+      check(
+        (
+          await db
+            .from("ai_config_versions")
+            .update({ behaviour_reviewed: true })
+            .eq("id", run.config_id)
+        ).error,
+      );
     } else if (b.action === "activate") {
       const id = z.string().uuid().parse(b.id);
       const { data: review } = await db
@@ -144,6 +151,13 @@ export async function POST(req: Request) {
         throw new AppError(
           "Complete the evaluations and human review before activating.",
         );
+      const { data: config } = await db
+        .from("ai_config_versions")
+        .select("privacy_reviewed,behaviour_reviewed")
+        .eq("id", id)
+        .single();
+      if (!config?.privacy_reviewed || !config.behaviour_reviewed)
+        throw new AppError("This model configuration has not passed review.");
       check(
         (
           await db
@@ -206,6 +220,17 @@ export async function POST(req: Request) {
           paused: z.boolean(),
         })
         .parse(b);
+      if (!s.paused) {
+        const { data: active } = await db
+          .from("active_config")
+          .select("config_id")
+          .eq("singleton", true)
+          .single();
+        if (!active?.config_id)
+          throw new AppError(
+            "Configure, test, approve and activate a model before enabling AI requests.",
+          );
+      }
       check(
         (await db.from("operating_settings").update(s).eq("singleton", true))
           .error,
@@ -227,13 +252,11 @@ export async function POST(req: Request) {
     } else throw new AppError("Unknown action.");
     check(
       (
-        await db
-          .from("audit_events")
-          .insert({
-            actor_id: user.id,
-            action: b.action,
-            target_id: b.id ?? null,
-          })
+        await db.from("audit_events").insert({
+          actor_id: user.id,
+          action: b.action,
+          target_id: b.id ?? null,
+        })
       ).error,
     );
     return NextResponse.json({ message: "Saved." });

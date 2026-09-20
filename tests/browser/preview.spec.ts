@@ -18,6 +18,9 @@ test("desktop preview: chat, journal and explicit memory controls", async ({
   await expect(
     page.getByRole("textbox", { name: "Your message" }),
   ).toBeVisible();
+  await expect(page.getByText("Owner dashboard", { exact: true })).toHaveCount(
+    0,
+  );
   await page
     .getByRole("textbox", { name: "Your message" })
     .fill("School mornings are difficult");

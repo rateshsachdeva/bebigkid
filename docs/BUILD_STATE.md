@@ -22,7 +22,7 @@ Working name: Alongside. No production brand decision is implied. This release t
 
 - Production Next.js build: passed, without live secrets.
 - TypeScript check: passed.
-- Ten automated policy/database tests: passed. Database tests execute PostgreSQL in PGlite with synthetic Supabase roles/Auth/Storage fixtures. They cover cross-parent read/write denial, service-only RPCs, duplicate accounting, budget rejection, memory provenance cascade, late reply after conversation deletion and deletion access revocation. The fixture excludes vector retrieval and does not emulate Supabase Auth or Storage services.
+- Eleven automated policy/database tests: passed. Database tests execute PostgreSQL in PGlite with synthetic Supabase roles/Auth/Storage fixtures. They cover cross-parent read/write denial, service-only RPCs, duplicate accounting, budget rejection, memory provenance cascade, late reply after conversation deletion, deletion access revocation and bounded versioned response-style validation. The fixture excludes vector retrieval and does not emulate Supabase Auth or Storage services.
 - Three browser/API scenarios: desktop chat/journal/memory walkthrough; mobile navigation, overflow and composer placement; unconfigured APIs fail closed and jobs require authentication. See `browser-results.json` and screenshots for the latest run.
 - Browser automation used local Playwright with an alternate Chromium executable because the normal browser download timed out and agent-browser could not start in this environment. This is local browser evidence, not hosted-device certification.
 
@@ -44,7 +44,7 @@ Working name: Alongside. No production brand decision is implied. This release t
 
 Target repository: rateshsachdeva/bebigkid. Target Vercel project: giftingarena/bebigkid. Target Supabase: flpzyiprlqloebxxiuyu, healthy, Seoul region selected by the owner.
 
-Applied migrations: 20260920054022_alongside_initial and 20260920054238_platform_security. Local filenames match the hosted migration history.
+Applied migrations: 20260920054022_alongside_initial, 20260920054238_platform_security and 20260920124459_add_versioned_response_style. Local filenames match the hosted migration history.
 
 Hosted catalog verification: 24 tables; all 24 have RLS; anonymous and parent roles cannot execute begin_turn; parents cannot read admin_memberships; service_role can execute begin_turn; parent-exports bucket is private; zero family profiles; AI paused.
 
@@ -71,6 +71,16 @@ after a fresh sign-in.
 The MFA panel now has its own required state instead of depending on the error
 banner text, so clearing an old error while enrollment starts cannot unmount
 the panel or hide a QR code returned by Supabase.
+
+Assistant readiness now distinguishes Paused, Not configured and Enabled. The
+hosted settings are unpaused with a $5 internal monthly limit, but no approved
+model configuration is active, so chat correctly remains unavailable. The
+owner dashboard now explains the required model test/review/activation steps.
+Ordinary and sample users cannot see or render the owner navigation, and a
+content editor sees only Overview and Knowledge. Reply length, step count,
+follow-up question and language matching are versioned with a model candidate
+and exercised by its 40-answer evaluation; locked safety rules remain code-
+controlled. Multiple published knowledge sources are searched together.
 
 The hosted fixture test was attempted but the SQL connector runs in a read-only transaction, so its INSERT was rejected before fixtures were created. No permissions were widened. supabase/tests/hosted_isolation.sql is ready for execution through an appropriately authorised staging database connection. Hosted Auth/Storage and AI pipeline checks remain pending.
 

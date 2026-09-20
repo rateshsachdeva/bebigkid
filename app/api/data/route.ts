@@ -4,6 +4,13 @@ import { emptyChild } from "@/lib/types";
 export async function GET() {
   try {
     const { db, user, profile } = await identity(false);
+    const member = await service()
+      .from("admin_memberships")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("active", true)
+      .maybeSingle();
+    check(member.error);
     if (!profile.consent_at)
       return NextResponse.json({
         child: emptyChild,
@@ -12,8 +19,10 @@ export async function GET() {
         threads: [],
         email: user.email,
         consent: false,
+        isAdmin: !!member.data,
+        adminRole: member.data?.role,
       });
-    const [child, memories, journal, threads, member] = await Promise.all([
+    const [child, memories, journal, threads] = await Promise.all([
       db
         .from("child_profiles")
         .select("*")
@@ -37,12 +46,6 @@ export async function GET() {
         .eq("owner_id", user.id)
         .order("created_at", { ascending: false })
         .limit(50),
-      service()
-        .from("admin_memberships")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("active", true)
-        .maybeSingle(),
     ]);
     for (const r of [child, memories, journal, threads, member]) check(r.error);
     const ids = (threads.data ?? []).map((t) => t.id);
@@ -74,6 +77,7 @@ export async function GET() {
       email: user.email,
       consent: true,
       isAdmin: !!member.data,
+      adminRole: member.data?.role,
     });
   } catch (e) {
     return failure(e);
