@@ -60,6 +60,10 @@ hashed pilot invite for that account's verified email. Email-code access also
 remains invitation-only and the default SMTP rate limit was observed in hosted
 testing.
 
+Owner MFA enrollment now recovers from an interrupted setup by removing only
+the owner's stale, unverified TOTP factors before issuing a fresh QR code.
+Verified factors are never removed by this recovery path.
+
 The hosted fixture test was attempted but the SQL connector runs in a read-only transaction, so its INSERT was rejected before fixtures were created. No permissions were widened. supabase/tests/hosted_isolation.sql is ready for execution through an appropriately authorised staging database connection. Hosted Auth/Storage and AI pipeline checks remain pending.
 
 Vercel connector currently returns project-not-found for bebigkid, exposes only the older project, and its advertised deploy tool is unavailable. It cannot set the project's environment variables in this session. Reconnect it with access to the supplied project. See CONFIGURATION.md for exact dashboard values/fields to finish securely.
