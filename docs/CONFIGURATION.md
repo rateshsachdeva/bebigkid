@@ -43,6 +43,10 @@ provider and enter the Google client ID and secret. In Supabase Authentication
 `https://bebigkid.vercel.app/auth/callback` to the redirect allow list. Google
 creates new Auth users without the invitation table; email-code access remains
 invitation-only until production SMTP and abuse protection are configured.
+With `ALLOW_REAL_FAMILY_PILOT=false`, Google users may create an account but only
+an account whose verified email has a current hashed `pilot_invites` row may
+accept consent or use chat. This permits named testers without opening the pilot
+to every Google account.
 
 Once the owner specifies the sign-in email, an authorised setup session can add its hash to pilot_invites. After the owner signs in, assign the verified Auth user ID in admin_memberships. The owner then sets up MFA at `/admin`. Do not create an unauthenticated administrator registration route.
 

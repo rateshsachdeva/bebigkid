@@ -7,6 +7,7 @@ import {
   failure,
   identity,
   origin,
+  requirePilotAccess,
   service,
 } from "@/lib/server";
 import { childSchema, noteSchema } from "@/lib/validation";
@@ -24,11 +25,7 @@ async function handle(
     if (kind === "consent") {
       if (b.accepted !== true)
         throw new AppError("Please review the consent statement.");
-      if (process.env.ALLOW_REAL_FAMILY_PILOT !== "true")
-        throw new AppError(
-          "The real-family pilot is not open yet. Please explore the sample experience.",
-          503,
-        );
+      await requirePilotAccess(user);
       const svc = service();
       check(
         (

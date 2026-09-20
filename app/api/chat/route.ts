@@ -4,6 +4,7 @@ import {
   failure,
   identity,
   origin,
+  requirePilotAccess,
   service,
 } from "@/lib/server";
 import { turnSchema } from "@/lib/validation";
@@ -26,9 +27,8 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   try {
     origin(req);
-    if (process.env.ALLOW_REAL_FAMILY_PILOT !== "true")
-      throw new AppError("The real-family pilot is not open yet.", 503);
     const { db, user, profile } = await identity();
+    await requirePilotAccess(user);
     const { threadId, requestId, message } = turnSchema.parse(await body(req));
     const { data: thread } = await db
       .from("threads")

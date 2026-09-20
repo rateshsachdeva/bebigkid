@@ -151,6 +151,24 @@ export async function body(req: Request) {
 }
 export const emailHash = (email: string) =>
   createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
+export async function requirePilotAccess(user: { email?: string | null }) {
+  if (process.env.ALLOW_REAL_FAMILY_PILOT === "true") return;
+  const email = user.email?.trim().toLowerCase();
+  if (email) {
+    const { data: invite, error } = await service()
+      .from("pilot_invites")
+      .select("email_hash")
+      .eq("email_hash", emailHash(email))
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+    check(error);
+    if (invite) return;
+  }
+  throw new AppError(
+    "Your account is ready, but the real-family pilot is not open to this account yet. Please explore the sample experience.",
+    503,
+  );
+}
 export async function recentLogin(
   db: Awaited<ReturnType<typeof sessionClient>>,
 ) {

@@ -53,9 +53,10 @@ Security advisor after remediation: zero warnings/errors; 15 informational notic
 Google account creation/sign-in is implemented with a server-side PKCE callback,
 central parent-profile provisioning and canonical redirects. TypeScript, the ten
 policy/database tests, production build and four browser/API scenarios pass.
-Hosted Google provider credentials and its redirect allow list remain an owner
-dashboard configuration gate; the button must not be represented as operational
-until that configuration and a real callback are verified. Email-code access
+The hosted Google callback has now been verified with the owner's account.
+Creating an Auth account does not by itself grant access to real-family features:
+while the global pilot flag remains false, consent and chat require a current
+hashed pilot invite for that account's verified email. Email-code access also
 remains invitation-only and the default SMTP rate limit was observed in hosted
 testing.
 
