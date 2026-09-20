@@ -1,0 +1,50 @@
+{
+  "name": "alongside-parent-companion",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:browser": "playwright test",
+    "db:migrate": "supabase db push",
+    "db:types": "supabase gen types typescript --linked",
+    "check": "pnpm typecheck && pnpm test",
+    "format": "biome format --write app components lib tests"
+  },
+  "dependencies": {
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.116.0",
+    "ai": "7.0.15",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.446.0",
+    "next": "16.2.10",
+    "radix-ui": "^1.6.1",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "server-only": "^0.0.1",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.2",
+    "@electric-sql/pglite": "0.5.8",
+    "@playwright/test": "^1.61.1",
+    "@tailwindcss/postcss": "^4.3.2",
+    "@types/node": "^24.13.2",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "postcss": "^8",
+    "supabase": "2.117.0",
+    "tailwindcss": "^4.3.2",
+    "tsx": "^4.23.0",
+    "typescript": "^5.6.3"
+  },
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": "24.x"
+  }
+}

@@ -1,0 +1,1 @@
+Based on vercel/chatbot commit c2f8235e1f3ea903ad8b7f61447c4f74164b5c58. Original licence retained. Upstream UI primitives and dependency lock retained. Generic tools/artifacts, public sharing, telemetry, Auth.js and Neon runtime code removed for the parent app. New Supabase integration is isolated.
