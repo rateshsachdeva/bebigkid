@@ -111,53 +111,83 @@ export default function Admin({ demo }: { demo: boolean }) {
         <div className="paper admin-form">
           <h2>Verify owner access</h2>
           <p>
-            Use your authenticator app. If this is your first visit, set it up
-            below.
+            If Alongside is already in your authenticator app, enter its current
+            six-digit code below. Do not generate another QR code.
+          </p>
+          <p>
+            For first-time setup, generate one QR code, scan it once, and then
+            enter the code shown on your iPhone.
           </p>
           <Button
             variant="outline"
+            disabled={busy}
             onClick={async () => {
+              setBusy(true);
+              setError("");
+              setNotice("");
               try {
                 const d = await api("/api/mfa", { action: "enrol" });
                 setFactor(d.id);
                 setQr(d.qr ?? "");
+                setCode("");
                 setNotice(
-                  "Scan the code with your authenticator app, then enter its code.",
+                  "Scan this QR code once. Then enter the current six-digit code shown for Alongside.",
                 );
               } catch (e) {
                 setError((e as Error).message);
+              } finally {
+                setBusy(false);
               }
             }}
           >
-            Set up authenticator
+            {busy ? "Preparing…" : "Generate a new QR code"}
           </Button>
           {qr && (
-            <img
-              src={qr}
-              width={180}
-              height={180}
-              alt="Authenticator setup QR code"
-            />
+            <div>
+              <img
+                src={qr}
+                width={180}
+                height={180}
+                alt="Authenticator setup QR code"
+              />
+              <p>
+                On iPhone: scan with the Camera, choose <b>Add Verification
+                Code</b> or open it in your authenticator app, and save the
+                account as Alongside.
+              </p>
+            </div>
           )}
           <Input
             aria-label="Authenticator code"
             inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="6-digit code"
+            maxLength={6}
             value={code}
-            onChange={(e) => setCode(e.target.value)}
+            onChange={(e) =>
+              setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+            }
           />
           <Button
+            disabled={busy || code.length !== 6}
             onClick={async () => {
+              setBusy(true);
+              setError("");
+              setNotice("");
               try {
                 await api("/api/mfa", { action: "verify", factor, code });
                 setError("");
                 setQr("");
+                setNotice("Owner verification complete.");
                 await load();
               } catch (e) {
                 setError((e as Error).message);
+              } finally {
+                setBusy(false);
               }
             }}
           >
-            Verify code
+            {busy ? "Verifying…" : "Verify code"}
           </Button>
         </div>
       )}

@@ -9,6 +9,47 @@ import {
   service,
 } from "@/lib/server";
 import { z } from "zod";
+
+function checkMfa(
+  error: { message: string; code?: string; status?: number } | null,
+) {
+  if (!error) return;
+  if (
+    error.code === "mfa_verification_failed" ||
+    error.code === "mfa_verification_rejected"
+  )
+    throw new AppError(
+      "That authenticator code was not accepted. Use the current six-digit code shown for Alongside and try again.",
+    );
+  if (error.code === "mfa_challenge_expired")
+    throw new AppError(
+      "That authenticator challenge expired. Enter the newest six-digit code and try again.",
+    );
+  if (
+    error.code === "session_expired" ||
+    error.code === "session_not_found" ||
+    error.code === "refresh_token_not_found" ||
+    error.code === "refresh_token_already_used"
+  )
+    throw new AppError(
+      "Your sign-in session expired. Sign out, sign in with Google again, and complete authenticator setup within 15 minutes.",
+      401,
+    );
+  if (
+    error.code === "mfa_totp_enroll_not_enabled" ||
+    error.code === "mfa_totp_verify_not_enabled"
+  )
+    throw new AppError(
+      "Authenticator verification is disabled in Supabase. Enable TOTP MFA and try again.",
+      503,
+    );
+  if (error.code === "mfa_factor_not_found")
+    throw new AppError(
+      "That QR code is no longer active. Generate a new QR code and scan it again.",
+    );
+  check(error);
+}
+
 export async function POST(req: Request) {
   try {
     origin(req);
@@ -49,20 +90,35 @@ export async function POST(req: Request) {
         factorType: "totp",
         friendlyName: "Alongside owner",
       });
-      check(error);
+      checkMfa(error);
       return NextResponse.json({ id: data!.id, qr: data!.totp.qr_code });
     }
     if (b.action === "verify") {
-      const factor = b.factor || factors?.totp[0]?.id;
+      const requestedFactor = b.factor
+        ? z.string().uuid().parse(b.factor)
+        : undefined;
+      const privileged = service();
+      const { data: allFactors, error: adminListError } =
+        await privileged.auth.admin.mfa.listFactors({ userId: user.id });
+      check(adminListError);
+      const ownedFactors =
+        allFactors?.factors.filter(
+          (candidate) => candidate.factor_type === "totp",
+        ) ?? [];
+      const factor = requestedFactor
+        ? ownedFactors.find((candidate) => candidate.id === requestedFactor)?.id
+        : (ownedFactors.find((candidate) => candidate.status === "unverified")
+            ?.id ?? factors?.totp[0]?.id);
       if (!factor) throw new AppError("Set up your authenticator first.");
       const { error } = await db.auth.mfa.challengeAndVerify({
-        factorId: z.string().uuid().parse(factor),
-        code: z
-          .string()
-          .regex(/^\d{6}$/)
-          .parse(b.code),
+        factorId: factor,
+        code: z.preprocess(
+          (value) =>
+            typeof value === "string" ? value.replace(/\s/g, "") : value,
+          z.string().regex(/^\d{6}$/),
+        ).parse(b.code),
       });
-      check(error);
+      checkMfa(error);
       return NextResponse.json({ ok: true });
     }
     throw new AppError("Unknown action.");

@@ -63,6 +63,11 @@ testing.
 Owner MFA enrollment now recovers from an interrupted setup by removing only
 the owner's stale, unverified TOTP factors before issuing a fresh QR code.
 Verified factors are never removed by this recovery path.
+The verification step also recovers a pending factor after a page refresh,
+normalises pasted six-digit codes and reports expired sessions, rejected codes
+and disabled TOTP verification separately. Supabase TOTP MFA is enabled; AAL1
+sessions are limited to 15 minutes, so first-time setup must be completed soon
+after a fresh sign-in.
 
 The hosted fixture test was attempted but the SQL connector runs in a read-only transaction, so its INSERT was rejected before fixtures were created. No permissions were widened. supabase/tests/hosted_isolation.sql is ready for execution through an appropriately authorised staging database connection. Hosted Auth/Storage and AI pipeline checks remain pending.
 
