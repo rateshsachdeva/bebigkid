@@ -50,6 +50,15 @@ Hosted catalog verification: 24 tables; all 24 have RLS; anonymous and parent ro
 
 Security advisor after remediation: zero warnings/errors; 15 informational notices for service-only tables with RLS and no client policies. This is intentional default-deny access; do not add permissive policies to silence these notices.
 
+Google account creation/sign-in is implemented with a server-side PKCE callback,
+central parent-profile provisioning and canonical redirects. TypeScript, the ten
+policy/database tests, production build and four browser/API scenarios pass.
+Hosted Google provider credentials and its redirect allow list remain an owner
+dashboard configuration gate; the button must not be represented as operational
+until that configuration and a real callback are verified. Email-code access
+remains invitation-only and the default SMTP rate limit was observed in hosted
+testing.
+
 The hosted fixture test was attempted but the SQL connector runs in a read-only transaction, so its INSERT was rejected before fixtures were created. No permissions were widened. supabase/tests/hosted_isolation.sql is ready for execution through an appropriately authorised staging database connection. Hosted Auth/Storage and AI pipeline checks remain pending.
 
 Vercel connector currently returns project-not-found for bebigkid, exposes only the older project, and its advertised deploy tool is unavailable. It cannot set the project's environment variables in this session. Reconnect it with access to the supplied project. See CONFIGURATION.md for exact dashboard values/fields to finish securely.

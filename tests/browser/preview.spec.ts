@@ -1,4 +1,14 @@
 import { test, expect } from "@playwright/test";
+test("sign-in offers simple Google account creation", async ({ page }) => {
+  await page.goto("/sign-in");
+  await expect(
+    page.getByRole("heading", { name: "Create your account or sign in." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Continue with Google" }),
+  ).toBeVisible();
+  await expect(page.getByText("Invitation-only pilot")).toHaveCount(0);
+});
 test("desktop preview: chat, journal and explicit memory controls", async ({
   page,
 }) => {
@@ -11,7 +21,7 @@ test("desktop preview: chat, journal and explicit memory controls", async ({
   await page
     .getByRole("textbox", { name: "Your message" })
     .fill("School mornings are difficult");
-  await page.screenshot({path:"docs/preview-chat.png",fullPage:true});
+  await page.screenshot({ path: "docs/preview-chat.png", fullPage: true });
   await page.getByRole("button", { name: "Send message", exact: true }).click();
   await expect(
     page.getByText("School mornings are difficult", { exact: true }),
@@ -53,15 +63,19 @@ test("mobile preview: no horizontal overflow and usable navigation", async ({
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
-  const footer = await page.locator('.composer-footer').boundingBox();
-  const nav = await page.getByRole('navigation', {name:'Mobile navigation'}).boundingBox();
+  const footer = await page.locator(".composer-footer").boundingBox();
+  const nav = await page
+    .getByRole("navigation", { name: "Mobile navigation" })
+    .boundingBox();
   expect(footer!.y + footer!.height).toBeLessThanOrEqual(nav!.y);
   await page.screenshot({ path: "docs/preview-mobile.png", fullPage: true });
   await page
     .getByRole("navigation", { name: "Mobile navigation" })
     .getByRole("button", { name: "My child" })
     .click();
-  await expect(page.getByRole("heading", { name: /A little understanding/ })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /A little understanding/ }),
+  ).toBeVisible();
 });
 test("unconfigured services fail closed; jobs cannot run anonymously", async ({
   request,

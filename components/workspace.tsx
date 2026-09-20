@@ -117,9 +117,11 @@ export async function api(path: string, body?: unknown, method?: string) {
 export default function Workspace({
   demo = false,
   initialPage = "chat",
+  initialError = "",
 }: {
   demo?: boolean;
   initialPage?: string;
+  initialError?: string;
 }) {
   const router = useRouter();
   const [page, setPage] = useState(initialPage),
@@ -128,7 +130,7 @@ export default function Workspace({
     ),
     [ready, setReady] = useState(demo),
     [notice, setNotice] = useState(""),
-    [error, setError] = useState("");
+    [error, setError] = useState(initialError);
   const [draft, setDraft] = useState(""),
     [current, setCurrent] = useState<string | null>(
       initialPage.startsWith("chat/") ? initialPage.split("/")[1] : null,
@@ -477,6 +479,19 @@ export default function Workspace({
       setBusy(false);
     }
   }
+  async function googleAuth() {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api("/api/auth", { action: "google" });
+      if (typeof result.url !== "string")
+        throw new Error("Google sign-in could not start. Please try again.");
+      window.location.assign(result.url);
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  }
   const alert = (
     <>
       {error && (
@@ -624,9 +639,23 @@ export default function Workspace({
               <div className="auth-panel">
                 {pageHead(
                   "WELCOME TO ALONGSIDE",
-                  "A space for you.",
-                  "Sign in with an email code. No password to remember.",
+                  "Create your account or sign in.",
+                  "Continue with Google, or use an email code. No password to remember.",
                 )}
+                <Button
+                  type="button"
+                  className="google-button"
+                  onClick={googleAuth}
+                  disabled={busy}
+                >
+                  <span className="google-mark" aria-hidden="true">
+                    G
+                  </span>
+                  Continue with Google
+                </Button>
+                <div className="auth-divider" aria-hidden="true">
+                  <span>or use email</span>
+                </div>
                 <form onSubmit={auth}>
                   <label>
                     Email address
@@ -681,7 +710,8 @@ export default function Workspace({
                 )}
                 {alert}
                 <p className="small-print">
-                  Invitation-only pilot. Your email is used for account access.
+                  Google creates an account automatically. Email-code access is
+                  currently available to invited testers.
                 </p>
               </div>
             ) : (

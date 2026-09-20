@@ -6,6 +6,7 @@ import {
   emailHash,
   failure,
   origin,
+  provisionParent,
   service,
   sessionClient,
 } from "@/lib/server";
@@ -18,6 +19,24 @@ export async function POST(req: Request) {
     if (b.action === "logout") {
       await db.auth.signOut({ scope: "global" });
       return NextResponse.json({ ok: true });
+    }
+    if (b.action === "google") {
+      const appUrl = process.env.APP_URL;
+      if (!appUrl)
+        throw new AppError("The service address is not configured.", 503);
+      const { data, error } = await db.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: new URL("/auth/callback", appUrl).toString(),
+        },
+      });
+      check(error);
+      if (!data.url) throw new AppError("Google sign-in could not start.", 503);
+      const providerUrl = new URL(data.url);
+      const supabaseUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "");
+      if (providerUrl.origin !== supabaseUrl.origin)
+        throw new AppError("Google sign-in could not start.", 503);
+      return NextResponse.json({ url: providerUrl.toString() });
     }
     const email = z
       .string()
@@ -57,23 +76,7 @@ export async function POST(req: Request) {
       });
       check(error);
       if (!data.user) throw new AppError("The code could not be verified.");
-      const privileged = service();
-      const { data: deleted } = await privileged
-        .from("deletion_ledger")
-        .select("owner_id")
-        .eq("owner_id", data.user.id)
-        .maybeSingle();
-      if (deleted) {
-        await db.auth.signOut();
-        throw new AppError("This account is being removed.", 403);
-      }
-      const { error: e } = await privileged
-        .from("parent_profiles")
-        .upsert(
-          { user_id: data.user.id },
-          { onConflict: "user_id", ignoreDuplicates: true },
-        );
-      check(e);
+      await provisionParent(db, data.user.id);
       return NextResponse.json({ ok: true });
     }
     throw new AppError("Unknown action.");

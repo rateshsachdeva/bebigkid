@@ -92,6 +92,28 @@ export async function admin(ownerOnly = true) {
     );
   return { ...a, privileged, role: member.role };
 }
+export async function provisionParent(
+  db: Awaited<ReturnType<typeof sessionClient>>,
+  userId: string,
+) {
+  const privileged = service();
+  const { data: deleted } = await privileged
+    .from("deletion_ledger")
+    .select("owner_id")
+    .eq("owner_id", userId)
+    .maybeSingle();
+  if (deleted) {
+    await db.auth.signOut();
+    throw new AppError("This account is being removed.", 403);
+  }
+  const { error } = await privileged
+    .from("parent_profiles")
+    .upsert(
+      { user_id: userId },
+      { onConflict: "user_id", ignoreDuplicates: true },
+    );
+  check(error);
+}
 export function origin(req: Request) {
   const expected = process.env.APP_URL;
   if (!expected)
@@ -171,6 +193,14 @@ export function check(
     throw new AppError(
       "That sign-in code has expired or was already used. Please request a new code.",
       400,
+    );
+  if (
+    error.code === "provider_disabled" ||
+    /provider is not enabled|unsupported provider/i.test(error.message)
+  )
+    throw new AppError(
+      "Google sign-in is not available yet. Please try again later.",
+      503,
     );
   throw new AppError("The action could not be saved. Please try again.", 400);
 }

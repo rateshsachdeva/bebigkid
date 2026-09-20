@@ -33,6 +33,17 @@ The cron in vercel.json runs once a minute and requires the paid Vercel plan sel
 
 Configure the Supabase Auth site URL to the verified app domain and its email template to include the email code (`{{ .Token }}`). Set a production SMTP sender. The app deliberately requires a pilot invite before requesting email delivery; there are no invites or administrator accounts yet.
 
+Google account creation/sign-in is implemented through the server-side PKCE
+flow. In Google Cloud create a Web application OAuth client. Add
+`https://flpzyiprlqloebxxiuyu.supabase.co/auth/v1/callback` as its authorised
+redirect URI and `https://bebigkid.vercel.app` as an authorised JavaScript
+origin. In Supabase Authentication → Sign In / Providers → Google, enable the
+provider and enter the Google client ID and secret. In Supabase Authentication
+→ URL Configuration, set the Site URL to `https://bebigkid.vercel.app` and add
+`https://bebigkid.vercel.app/auth/callback` to the redirect allow list. Google
+creates new Auth users without the invitation table; email-code access remains
+invitation-only until production SMTP and abuse protection are configured.
+
 Once the owner specifies the sign-in email, an authorised setup session can add its hash to pilot_invites. After the owner signs in, assign the verified Auth user ID in admin_memberships. The owner then sets up MFA at `/admin`. Do not create an unauthenticated administrator registration route.
 
 ## Release gate

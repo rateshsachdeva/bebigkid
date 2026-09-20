@@ -827,6 +827,44 @@ button[data-slot="button"] {
   display: grid;
   gap: 22px;
 }
+.google-button {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 22px;
+  border: 1px solid #cfd7cb;
+  background: white;
+  color: #1c332d;
+  box-shadow: 0 1px 2px rgb(17 42 34 / 7%);
+}
+.google-button:hover {
+  background: #f7faf5;
+}
+.google-mark {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  color: #2768c7;
+  font-family: Arial, sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: #758078;
+  font-size: 0.75rem;
+}
+.auth-divider::before,
+.auth-divider::after {
+  height: 1px;
+  flex: 1;
+  background: #dfe4dc;
+  content: "";
+}
 .text-link {
   display: block;
   background: none;
@@ -1259,16 +1297,45 @@ button[data-slot="button"] {
   }
 }
 /* Keep the composer above navigation even when the sample notice wraps. */
-.sidebar { overflow-y: auto; }
-.sidebar > * { flex-shrink: 0; }
-.main-shell:has(> .chat-layout) { height: 100dvh; display: flex; flex-direction: column; }
+.sidebar {
+  overflow-y: auto;
+}
+.sidebar > * {
+  flex-shrink: 0;
+}
+.main-shell:has(> .chat-layout) {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
 .main-shell:has(> .chat-layout) > .topbar,
-.main-shell:has(> .chat-layout) > .demo-banner { flex-shrink: 0; }
-.main-shell > .chat-layout { height: auto; flex: 1; min-height: 0; }
-.composer-region { flex-shrink: 0; }
-@media (max-width:767px) {
-  .main-shell:has(> .chat-layout) { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
-  .composer-footer, .context-control, .mobile-nav button, .starter > span { font-size: .75rem; }
-  .composer-footer, .context-control, .starter > span { color: #52615c; }
-  .chat-welcome h1 { font-size: 2.4rem; }
+.main-shell:has(> .chat-layout) > .demo-banner {
+  flex-shrink: 0;
+}
+.main-shell > .chat-layout {
+  height: auto;
+  flex: 1;
+  min-height: 0;
+}
+.composer-region {
+  flex-shrink: 0;
+}
+@media (max-width: 767px) {
+  .main-shell:has(> .chat-layout) {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+  .composer-footer,
+  .context-control,
+  .mobile-nav button,
+  .starter > span {
+    font-size: 0.75rem;
+  }
+  .composer-footer,
+  .context-control,
+  .starter > span {
+    color: #52615c;
+  }
+  .chat-welcome h1 {
+    font-size: 2.4rem;
+  }
 }

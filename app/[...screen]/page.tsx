@@ -20,12 +20,18 @@ const routes = [
 ];
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ screen: string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { screen } = await params;
+  const [{ screen }, query] = await Promise.all([params, searchParams]);
   const route = screen.join("/");
   if (!routes.includes(route) && !/^chat\/[0-9a-f-]{36}$/.test(route))
     notFound();
-  return <Workspace initialPage={route} />;
+  const initialError =
+    route === "sign-in" && query.auth_error === "google"
+      ? "Google sign-in could not be completed. Please try again."
+      : "";
+  return <Workspace initialPage={route} initialError={initialError} />;
 }
