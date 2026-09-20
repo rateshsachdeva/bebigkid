@@ -41,7 +41,13 @@ export default function Admin({ demo }: { demo: boolean }) {
     [budget, setBudget] = useState("0"),
     [code, setCode] = useState(""),
     [factor, setFactor] = useState(""),
-    [qr, setQr] = useState("");
+    [qr, setQr] = useState(""),
+    [mfaRequired, setMfaRequired] = useState(false);
+  function reportError(value: unknown) {
+    const message = value instanceof Error ? value.message : String(value);
+    setError(message);
+    if (message.includes("authenticator")) setMfaRequired(true);
+  }
   async function load() {
     if (!demo) {
       const d = await api("/api/admin");
@@ -50,7 +56,7 @@ export default function Admin({ demo }: { demo: boolean }) {
     }
   }
   useEffect(() => {
-    load().catch((e) => setError(e.message));
+    load().catch(reportError);
   }, []);
   async function action(body: unknown) {
     setBusy(true);
@@ -67,7 +73,7 @@ export default function Admin({ demo }: { demo: boolean }) {
       setNotice(d.message ?? "Saved.");
       await load();
     } catch (e) {
-      setError((e as Error).message);
+      reportError(e);
     } finally {
       setBusy(false);
     }
@@ -107,7 +113,7 @@ export default function Admin({ demo }: { demo: boolean }) {
           {notice}
         </div>
       )}
-      {error.includes("authenticator") && (
+      {mfaRequired && (
         <div className="paper admin-form">
           <h2>Verify owner access</h2>
           <p>
@@ -134,7 +140,7 @@ export default function Admin({ demo }: { demo: boolean }) {
                   "Scan this QR code once. Then enter the current six-digit code shown for Alongside.",
                 );
               } catch (e) {
-                setError((e as Error).message);
+                reportError(e);
               } finally {
                 setBusy(false);
               }
@@ -176,12 +182,13 @@ export default function Admin({ demo }: { demo: boolean }) {
               setNotice("");
               try {
                 await api("/api/mfa", { action: "verify", factor, code });
+                setMfaRequired(false);
                 setError("");
                 setQr("");
                 setNotice("Owner verification complete.");
                 await load();
               } catch (e) {
-                setError((e as Error).message);
+                reportError(e);
               } finally {
                 setBusy(false);
               }
